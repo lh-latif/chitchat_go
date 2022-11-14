@@ -18,8 +18,8 @@ import (
 type ErrorText string
 
 type UserRegisterBody struct {
-	Username string `json="username"`
-	Password string `json="password"`
+	Username string `json:"username"`
+	Password string `json:"password"`
 }
 
 type UserSigninBody struct {
@@ -27,8 +27,12 @@ type UserSigninBody struct {
 }
 
 type UserContactBody struct {
-	Id          uint   `json="id"`
-	ContactName string `json="contact_name"`
+	Id          uint   `json:"id"`
+	ContactName string `json:"contact_name"`
+}
+
+type SearchUserBody struct {
+	Username string `json:"username"`
 }
 
 func (e ErrorText) Error() string {
@@ -59,9 +63,11 @@ func main() {
 	app.Get("/", func(c *fiber.Ctx) error {
 		return c.SendString("Hello World!")
 	})
+
 	app.Use("/assets", fs.New(fs.Config{
 		Root: http.Dir("./web_assets"),
 	}))
+
 	app.Get("/app*", func(c Ctx) error {
 		return c.Render("app", nil)
 	})
@@ -107,14 +113,24 @@ func main() {
 			return ErrorText("Username not found")
 		}
 	})
-	userGroup := app.Group("/user", webserver.JwtCheckMiddleware(dbConn))
+	jwtGroup := app.Group("/", webserver.JwtCheckMiddleware(dbConn))
 
-	userGroup.Post("/contact", func(c Ctx) error {
+	jwtGroup.Post("/search_user", func(c Ctx) error {
+		body := SearchUserBody{}
+		c.BodyParser(&body)
+		users := []db.User{}
+		dbConn.Where("username LIKE ?", "%"+body.Username+"%").Find(&users)
+		return c.JSON(TypeJSON{
+			"data": users,
+		})
+	})
+
+	jwtGroup.Post("/user/contact", func(c Ctx) error {
 		body := UserContactBody{}
 		return c.BodyParser(&body)
 	})
 
-	userGroup.Get("/contact", func(c Ctx) error {
+	jwtGroup.Get("/user/contact", func(c Ctx) error {
 		user := c.Context().UserValue("user").(db.User)
 		contacts := []db.UserContact{}
 		dbConn.Where("user_id = ?", user.Id).Find(&contacts)
