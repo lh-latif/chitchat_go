@@ -13,15 +13,23 @@ func ConnectDB() *gorm.DB {
 		panic("error")
 	}
 
-	conn.Migrator().AutoMigrate(User{})
+	conn.Migrator().AutoMigrate(User{}, UserContact{})
 
 	return conn
 }
 
 type User struct {
-	Id        uint   `gorm:"primaryKey"`
-	Username  string `gorm:"primaryKey"`
-	Hash      string `gorm:"primaryKey"`
+	Id        uint `gorm:"primaryKey"`
+	Username  string
+	Hash      string
 	CreatedAt time.Time
 	UpdatedAt time.Time
+}
+
+type UserContact struct {
+	Id          uint `gorm:"primaryKey"`
+	UserId      uint
+	ContactId   uint
+	ContactName string
+	CreatedAt   time.Time
 }

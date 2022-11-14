@@ -11,8 +11,29 @@ import (
 	"github.com/gofiber/fiber/v2"
 	fs "github.com/gofiber/fiber/v2/middleware/filesystem"
 	"github.com/gofiber/template/html"
+	"github.com/golang-jwt/jwt/v4"
 	"golang.org/x/crypto/argon2"
 )
+
+type ErrorText string
+
+type UserRegisterBody struct {
+	Username string `json="username"`
+	Password string `json="password"`
+}
+
+type UserSigninBody struct {
+	UserRegisterBody
+}
+
+type UserContactBody struct {
+	Id          uint   `json="id"`
+	ContactName string `json="contact_name"`
+}
+
+func (e ErrorText) Error() string {
+	return string(e)
+}
 
 // const ws = websocket
 
@@ -45,15 +66,6 @@ func main() {
 		return c.Render("app", nil)
 	})
 
-	type UserRegisterBody struct {
-		Username string `json="username"`
-		Password string `json="password"`
-	}
-
-	type UserSigninBody struct {
-		UserRegisterBody
-	}
-
 	app.Post("/user/register", func(c Ctx) error {
 		body := UserRegisterBody{}
 		err := c.BodyParser(&body)
@@ -76,10 +88,39 @@ func main() {
 
 	app.Post("/user/signin", func(c Ctx) error {
 		body := UserSigninBody{}
-		err := c.BodyParser(&body)
+		c.BodyParser(&body)
 		var user db.User
-		dbConn.Find(&user, "username = ?", user.Username)
-		return err
+		dbConn.Find(&user, "username = ?", body.Username)
+		if user.Username != "" && userPass(&body, &user) {
+			token, err := webserver.InitiateToken(jwt.MapClaims{
+				"username": user.Username,
+			})
+			if err != nil {
+				return ErrorText("token signing error")
+			}
+			return c.JSON(TypeJSON{
+				"token": token,
+			})
+		} else if user.Username != "" {
+			return ErrorText("Password mismatch")
+		} else {
+			return ErrorText("Username not found")
+		}
+	})
+	userGroup := app.Group("/user", webserver.JwtCheckMiddleware(dbConn))
+
+	userGroup.Post("/contact", func(c Ctx) error {
+		body := UserContactBody{}
+		return c.BodyParser(&body)
+	})
+
+	userGroup.Get("/contact", func(c Ctx) error {
+		user := c.Context().UserValue("user").(db.User)
+		contacts := []db.UserContact{}
+		dbConn.Where("user_id = ?", user.Id).Find(&contacts)
+		return c.JSON(TypeJSON{
+			"data": contacts,
+		})
 	})
 
 	app.Get("/ws", func(c *fiber.Ctx) error {
@@ -117,4 +158,8 @@ func main() {
 	})
 
 	app.Listen(":8000")
+}
+
+func userPass(body *UserSigninBody, user *db.User) bool {
+	return string(argon2.IDKey([]byte(body.Password), []byte("programming in golang"), 10, 64*1024, 4, 32)) == user.Hash
 }
