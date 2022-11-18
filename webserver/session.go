@@ -9,9 +9,9 @@ type SessionState struct {
 	ListUser ListUserMap
 }
 
-type ChannelChatProto = chan ChatProto
+type UserSessionChan = chan SessionProcMsg
 
-type ListUserMap = map[string]ChannelChatProto
+type ListUserMap = map[string]UserSessionChan
 
 type ChatProto struct {
 	Session string
@@ -37,12 +37,22 @@ func session_start() (chan SessionProcMsg, bool) {
 			case "register":
 				p := msg.Payload.(TypeJSON)
 				name := p["name"].(string)
-				session_chan := p["session_chan"].(ChannelChatProto)
+				session_chan := p["session_chan"].(UserSessionChan)
 				from := p["result"].(chan int)
 				state.ListUser[name] = session_chan
 				from <- 1
 				continue
 			case "unregister":
+				continue
+			case "get_user":
+				username := msg.Payload.(TypeJSON)["username"].(string)
+				from := msg.Payload.(TypeJSON)["result"].(chan UserSessionChan)
+				user, isOk := state.ListUser[username]
+				if isOk {
+					from <- user
+				} else {
+					from <- nil
+				}
 				continue
 			case "list_user":
 				var users []string
@@ -80,4 +90,8 @@ func init_state(feedback_err chan int) SessionState {
 		ListUser: ListUserMap{},
 	}
 	return state
+}
+
+func send_chat() {
+
 }

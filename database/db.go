@@ -19,7 +19,7 @@ func ConnectDB() *gorm.DB {
 }
 
 type User struct {
-	Id        uint      `gorm:"primaryKey" json:"id"`
+	Id        uint      `gorm:"primaryKey;autoIncrement:true" json:"id"`
 	Username  string    `json:"username"`
 	Hash      string    `json:"hash"`
 	CreatedAt time.Time `json:"created_at"`
