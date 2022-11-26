@@ -6,3 +6,6 @@ Project ini sudah bisa mengirimkan pesan antara 2 party. Namun karena ini masih 
 
 ## Vision
 Saya sebenarnya berencana membuat chat server yang dapat scaling secara vertical dan modular, sehingga sebuah chat server dapat menggunakan multiple stack & tech. Saat ini saya sedang menulis menggunakan Go dan Erlang.
+
+## License
+All code from first commit and present is licensed with Apache License V2
