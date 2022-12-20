@@ -54,9 +54,9 @@ func UserChatSession(
 		wsWriterChan <- ClientOutput{
 			Command: "establish_chat_session",
 			Payload: TypeJSON{
+				"username": username,
 				"g":        state.G,
 				"n":        state.N,
-				"username": username,
 			},
 		}
 		state.Status = "ready"
@@ -86,9 +86,9 @@ func UserChatSession(
 			wsWriterChan <- ClientOutput{
 				Command: "establish_chat_session",
 				Payload: TypeJSON{
+					"username": username,
 					"g":        state.G,
 					"n":        state.N,
-					"username": username,
 				},
 			}
 		case "send_chat":

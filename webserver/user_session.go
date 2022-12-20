@@ -1,5 +1,0 @@
-package webserver
-
-func find() {
-
-}

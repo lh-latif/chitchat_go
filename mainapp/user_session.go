@@ -7,6 +7,11 @@ import (
 	"github.com/fasthttp/websocket"
 )
 
+type UserSessionState struct {
+	MyUsername  string
+	ChatSession map[string]TypeJSON
+}
+
 func UserSessionProcess(
 	conn *websocket.Conn,
 	from chan (chan ClientInput),
@@ -16,12 +21,12 @@ func UserSessionProcess(
 	inWsChan := make(chan ClientInput)
 	from <- inWsChan
 	inSessionChan := make(webserver.UserSessionChan)
-	state := UserWsState{
-		Session: map[string]TypeJSON{},
+	state := UserSessionState{
+		ChatSession: map[string]TypeJSON{},
 	}
 
 	defer func() {
-		for _, session := range state.Session {
+		for _, session := range state.ChatSession {
 			chatChannel := session["chat_session"].(UserChatChannel)
 			chatChannel <- UserChatMsg{
 				Command: "client_disconnect",
@@ -59,7 +64,7 @@ func UserSessionProcess(
 				payload := ci.Payload
 				username := payload["username"].(string)
 				// _ = payload
-				session, isOk := state.Session[username]
+				session, isOk := state.ChatSession[username]
 				if !isOk {
 					// buat sessionnya
 					response := make(chan webserver.UserSessionChan)
@@ -88,7 +93,7 @@ func UserSessionProcess(
 						session = TypeJSON{
 							"chat_session": userChatSessionChan,
 						}
-						state.Session[username] = session
+						state.ChatSession[username] = session
 					} else {
 						fmt.Println(result, "error result == nil")
 						continue
@@ -102,7 +107,7 @@ func UserSessionProcess(
 				// 	Command: "send_chat",
 				// }
 			case "send_public_key":
-				session, isOk := state.Session[ci.Payload["username"].(string)]
+				session, isOk := state.ChatSession[ci.Payload["username"].(string)]
 				if isOk {
 					session["chat_session"].(UserChatChannel) <- UserChatMsg{
 						Command: "send_public_key",
@@ -115,7 +120,7 @@ func UserSessionProcess(
 				}
 
 			case "send_chat":
-				session, isOk := state.Session[ci.Payload["username"].(string)]
+				session, isOk := state.ChatSession[ci.Payload["username"].(string)]
 				if isOk {
 					session["chat_session"].(UserChatChannel) <- UserChatMsg{
 						Command: "send_chat",
@@ -147,7 +152,7 @@ func UserSessionProcess(
 
 				from := pl["result"].(chan UserChatChannel)
 				from <- userChatSessionChan
-				state.Session[pl["username"].(string)] = TypeJSON{
+				state.ChatSession[pl["username"].(string)] = TypeJSON{
 					"chat_session": userChatSessionChan,
 				}
 			}
